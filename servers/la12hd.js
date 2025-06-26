@@ -9,14 +9,14 @@ async function getLa12HdUrl(originalEventLink) {
         const streamName = parsedOriginalUrl.searchParams.get('stream');
 
         if (!streamName) {
-            console.warn(`[La12HD] No se encontró el parámetro 'stream' en el enlace original: ${originalEventLink}. No se puede construir la URL de la12hd.com.`);
+            console.warn(`[La12HD] No se encontró el parámetro 'stream' en el enlace original: ${originalEventLink}. No se puede construir la URL de la14hd.com.`);
             return null;
         }
 
-        const urlDePeticion = `https://la12hd.com/vivo/canales.php?stream=${streamName}`;
+        const urlDePeticion = `https://la14hd.com/vivo/canales.php?stream=${streamName}`;
         
-        const referer = `https://la12hd.com/`; 
-        const origin = `https://la12hd.com`; 
+        const referer = `https://la14hd.com/`; 
+        const origin = `https://la14hd.com`; 
         
         const response = await axios.get(urlDePeticion, {
             headers: {
