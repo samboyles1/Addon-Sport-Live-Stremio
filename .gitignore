@@ -1,0 +1,11 @@
+node_modules
+package-lock.json 
+
+.cache
+
+# Environment variables
+.env
+
+# IDE / OS specific
+.vscode/
+*.DS_Store
