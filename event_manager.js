@@ -8,24 +8,24 @@ async function fetchAllEvents() {
         const data = await response.json();
         return data || [];
     } catch (error) {
-        console.error('[EventManager] Error al obtener los eventos del JSON:', error);
+        console.error('[EventManager] Error fetching events from JSON:', error);
         return [];
     }
 }
 
-async function getGroupedEvents(statusFilter = 'Todos', categoryFilter = 'Todas') {
+async function getGroupedEvents(statusFilter = 'All', categoryFilter = 'All') {
     const allEvents = await fetchAllEvents();
     let relevantEvents = allEvents;
 
-    if (statusFilter === 'En vivo') {
+    if (statusFilter === 'Live') {
         relevantEvents = relevantEvents.filter(event =>
             event.status && event.status.toLowerCase() === 'en vivo'
         );
-    } else if (statusFilter === 'Pronto') {
+    } else if (statusFilter === 'Upcoming') {
         relevantEvents = relevantEvents.filter(event =>
             event.status && event.status.toLowerCase() === 'pronto'
         );
-    } else if (statusFilter === 'Finalizados') {
+    } else if (statusFilter === 'Finished') {
         relevantEvents = relevantEvents.filter(event =>
             event.status && event.status.toLowerCase() === 'finalizado'
         );
@@ -39,7 +39,7 @@ async function getGroupedEvents(statusFilter = 'Todos', categoryFilter = 'Todas'
         );
     }
 
-    if (categoryFilter !== 'Todas') {
+    if (categoryFilter !== 'All') {
         relevantEvents = relevantEvents.filter(event =>
             event.category && event.category.toLowerCase() === categoryFilter.toLowerCase()
         );
@@ -51,7 +51,7 @@ async function getGroupedEvents(statusFilter = 'Todos', categoryFilter = 'Todas'
         const eventId = `${event.title.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '').toLowerCase()}_${event.time ? event.time.replace(/[^a-zA-Z0-9]/g, '') : 'no_time'}`;
         const groupKey = eventId;
 
-        let adjustedTime = 'Hora no disponible';
+        let adjustedTime = 'Time not available';
 
         if (event.time) {
             try {
@@ -77,34 +77,34 @@ async function getGroupedEvents(statusFilter = 'Todos', categoryFilter = 'Todas'
                     const adjustedDateTimeMs = eventDateTime.getTime() + (TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
                     const adjustedDateTime = new Date(adjustedDateTimeMs);
 
-                    adjustedTime = adjustedDateTime.toLocaleTimeString('es-ES', {
+                    adjustedTime = adjustedDateTime.toLocaleTimeString('en-US', {
                         hour: '2-digit',
                         minute: '2-digit',
                         hour12: false
                     });
 
                 } else {
-                    console.warn(`[EventManager] No se pudo parsear "${event.time}" como una fecha/hora válida. Mostrando el string original.`);
+                    console.warn(`[EventManager] Could not parse "${event.time}" as a valid date/time. Showing original string.`);
                     adjustedTime = event.time;
                 }
 
             } catch (e) {
-                console.error(`[EventManager] Excepción al procesar la fecha/hora para "${event.title}" ("${event.time}"):`, e.message);
-                adjustedTime = event.time || 'Error de fecha/hora';
+                console.error(`[EventManager] Exception while processing date/time for "${event.title}" ("${event.time}"):`, e.message);
+                adjustedTime = event.time || 'Date/time error';
             }
         }
 
-        const displayStatus = event.status ? event.status.toUpperCase() : 'DESCONOCIDO';
+        const displayStatus = event.status ? event.status.toUpperCase() : 'UNKNOWN';
 
-        let newDescription = `Disfruta de ${event.title}`;
+        let newDescription = `Enjoy ${event.title}`;
         if (displayStatus === 'EN VIVO') {
-            newDescription += ` en vivo.`;
-        } else if (displayStatus === 'PROXIMO') {
-            newDescription += `. Comienza a las ${adjustedTime}.`;
+            newDescription += ` live.`;
+        } else if (displayStatus === 'PRONTO') {
+            newDescription += `. Starts at ${adjustedTime}.`;
         } else if (displayStatus === 'FINALIZADO') {
-            newDescription += `. Finalizado a las ${adjustedTime}.`;
+            newDescription += `. Finished at ${adjustedTime}.`;
         } else {
-            newDescription += `. Estado: ${displayStatus}.`;
+            newDescription += `. Status: ${displayStatus}.`;
         }
 
         if (!groupedEvents.has(groupKey)) {

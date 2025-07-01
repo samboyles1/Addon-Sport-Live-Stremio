@@ -9,11 +9,10 @@ let builder;
 
 function defineCatalogHandler() {
     builder.defineCatalogHandler(async ({ type, id, extra }) => {
-        const statusFilter = extra.estado || 'Todos';
-        const categoryFilter = extra.categoria || 'Todas';
+        const statusFilter = extra.status || 'All';
+        const categoryFilter = extra.category || 'All';
 
         if (id === 'sportslive_events_direct' && type === 'tv') {
-
             const groupedEvents = await getGroupedEvents(statusFilter, categoryFilter); 
 
             const metas = groupedEvents.map(eventGroup => ({
@@ -28,7 +27,7 @@ function defineCatalogHandler() {
             }));
             return Promise.resolve({ metas });
         }
-        return Promise.resolve({ metas : [] });
+        return Promise.resolve({ metas: [] });
     });
 }
 
@@ -36,9 +35,7 @@ function defineMetaHandler() {
     builder.defineMetaHandler(async ({ type, id }) => { 
         if (type === 'tv' && id.startsWith('sportslive:')) {
             const eventGroupId = id.replace('sportslive:', '');
-            
-            const groupedEvents = await getGroupedEvents('Todos', 'Todas'); 
-
+            const groupedEvents = await getGroupedEvents('All', 'All'); 
             const eventGroup = groupedEvents.find(group => group.id === eventGroupId);
 
             if (eventGroup) { 
@@ -52,47 +49,37 @@ function defineMetaHandler() {
                     releaseInfo: `${eventGroup.time} - ${eventGroup.displayStatus}`, 
                     posterShape: 'tv',
                 };
-                return Promise.resolve({ meta: meta });
+                return Promise.resolve({ meta });
             }
         }
-        return Promise.resolve({ meta : null });
+        return Promise.resolve({ meta: null });
     });
 }
-
-
 
 function defineStreamHandler() {
     builder.defineStreamHandler(async function(args) {
         if (args.type === 'tv' && args.id.startsWith('sportslive:')) {
             const eventGroupId = args.id.replace('sportslive:', '');
-            
-            const groupedEvents = await getGroupedEvents('Todos', 'Todas'); 
+            const groupedEvents = await getGroupedEvents('All', 'All'); 
             const eventGroup = groupedEvents.find(group => group.id === eventGroupId);
 
-            if (!eventGroup) {
-                return Promise.resolve({ streams: [] });
-            }
-
-            if (eventGroup.displayStatus === 'FINALIZADO') { 
+            if (!eventGroup || eventGroup.displayStatus === 'FINALIZADO') {
                 return Promise.resolve({ streams: [] }); 
             }
 
             if (eventGroup.links && eventGroup.links.length > 0) {
                 const streams = [];
-
                 const userConfig = args.extra.config || {};
                 const enabledProviders = userConfig.enabledProviders && userConfig.enabledProviders.length > 0
-                                                ? userConfig.enabledProviders
-                                                : AVAILABLE_STREAM_PROVIDERS.map(p => p.id);
+                    ? userConfig.enabledProviders
+                    : AVAILABLE_STREAM_PROVIDERS.map(p => p.id);
 
                 let optionCounter = 1;
 
                 for (let i = 0; i < eventGroup.links.length; i++) {
                     const link = eventGroup.links[i];
-                    
                     const urlObj = new URL(link);
-                    let streamNameFromLink = urlObj.searchParams.get('stream') || `Canal Desconocido`; 
-                    
+                    let streamNameFromLink = urlObj.searchParams.get('stream') || `Unknown Channel`;
                     streamNameFromLink = streamNameFromLink.replace(/_/g, ' ').toUpperCase();
 
                     for (const providerId in streamProviders) {
@@ -108,17 +95,17 @@ function defineStreamHandler() {
 
                                     streams.push({
                                         url: decipheredUrl,
-                                        title: `${streamNameFromLink} (Opción ${optionCounter})\nDesde ${providerName}`
+                                        title: `${streamNameFromLink} (Option ${optionCounter})\nFrom ${providerName}`
                                     });
                                     optionCounter++; 
                                 }
                             } catch (error) {
-                                console.error(`[ADDON] Error al descifrar por ${providerId} para ${eventGroup.title} (enlace ${i+1}, ${link}):`, error.message);
+                                console.error(`[ADDON] Error decoding from ${providerId} for ${eventGroup.title} (link ${i + 1}, ${link}):`, error.message);
                             }
                         }
                     }
                 }
-                return Promise.resolve({ streams: streams });
+                return Promise.resolve({ streams });
             } else {
                 return Promise.resolve({ streams: [] });
             }
@@ -127,8 +114,6 @@ function defineStreamHandler() {
     });
 }
 
-
-
 Promise.all([
     initImageMaps(),
     fetchAllEvents() 
@@ -136,7 +121,6 @@ Promise.all([
 .then(([_, allEventsData]) => { 
     const categoriesSet = new Set(allEventsData.map(event => event.category).filter(Boolean));
     uniqueCategories = Array.from(categoriesSet).sort(); 
-    
     
     builder = addonBuilder({
         id: 'com.stremio.sports.live.addon',
@@ -152,20 +136,20 @@ Promise.all([
         catalogs: [
             {
                 id: 'sportslive_events_direct',
-                name: 'Eventos Deportivos',
+                name: 'Sporting Events',
                 type: 'tv',
                 extra: [
                     {
-                        name: 'estado',
-                        options: ['Todos', 'En vivo', 'Pronto', 'Finalizados'],
+                        name: 'status',
+                        options: ['All', 'Live', 'Upcoming', 'Finished'],
                         isRequired: false,
-                        default: 'Todos'
+                        default: 'All'
                     },
                     { 
-                        name: 'categoria',
-                        options: ['Todas', ...uniqueCategories],
+                        name: 'category',
+                        options: ['All', ...uniqueCategories],
                         isRequired: false,
-                        default: 'Todas'
+                        default: 'All'
                     }
                 ]
             }
@@ -180,9 +164,6 @@ Promise.all([
     defineMetaHandler();
     defineStreamHandler();
 
-
-    const manifest = builder.getInterface().manifest;
-
     serveHTTP(builder.getInterface(), {
         port: ADDON_PORT,
         middleware: (req, res, next) => {
@@ -191,6 +172,6 @@ Promise.all([
     });
 })
 .catch(err => {
-    console.error(`[ADDON] ¡ERROR CRÍTICO! El addon no se pudo iniciar porque no se pudieron cargar todos los mapas de imágenes o el HTML de la homepage.`, err);
+    console.error(`[ADDON] CRITICAL ERROR! The addon could not start because image maps or homepage HTML failed to load.`, err);
     process.exit(1);
 });
